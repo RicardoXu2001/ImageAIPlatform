@@ -1,0 +1,28 @@
+{
+  "name": "ai-image-platform",
+  "private": true,
+  "packageManager": "pnpm@9.15.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:frontend": "pnpm --filter @ai/frontend dev",
+    "dev:admin": "pnpm --filter @ai/admin dev",
+    "dev:backend": "pnpm --filter @ai/backend dev",
+    "dev:worker": "pnpm --filter @ai/worker dev",
+    "dev": "pnpm -r --parallel dev",
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "db:generate": "pnpm --filter @ai/database db:generate",
+    "db:migrate": "pnpm --filter @ai/database db:migrate",
+    "db:validate": "pnpm --filter @ai/database db:validate",
+    "db:studio": "pnpm --filter @ai/database db:studio",
+    "infra:up": "docker compose up -d postgres redis",
+    "infra:down": "docker compose down",
+    "infra:logs": "docker compose logs -f postgres redis"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.3"
+  }
+}

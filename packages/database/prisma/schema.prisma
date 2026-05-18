@@ -1,0 +1,315 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  USER
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  BANNED
+  DELETED
+}
+
+enum GenerationMode {
+  TEXT_TO_IMAGE
+  IMAGE_TO_IMAGE
+  INPAINT
+  UPSCALE
+  VARIATION
+}
+
+enum GenerationStatus {
+  PENDING
+  QUEUED
+  PROCESSING
+  SUCCEEDED
+  FAILED
+  CANCELLED
+  BLOCKED
+}
+
+enum ImageAssetType {
+  UPLOADED
+  GENERATED
+  THUMBNAIL
+  MASK
+  REFERENCE
+}
+
+enum AssetVisibility {
+  PRIVATE
+  PUBLIC
+  UNLISTED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  CANCELLED
+  REFUNDED
+}
+
+enum PaymentProvider {
+  STRIPE
+  PAYPAL
+  ALIPAY
+  WECHAT_PAY
+  MANUAL
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  TRIALING
+  PAST_DUE
+  CANCELLED
+  EXPIRED
+}
+
+enum BillingInterval {
+  MONTHLY
+  YEARLY
+  LIFETIME
+}
+
+enum CreditTransactionType {
+  PURCHASE
+  CONSUME
+  REFUND
+  GRANT
+}
+
+model User {
+  id             String     @id @default(uuid())
+  email          String     @unique
+  name           String?
+  avatarUrl      String?
+  role           UserRole   @default(USER)
+  status         UserStatus @default(ACTIVE)
+  creditsBalance Int        @default(0)
+  lastLoginAt    DateTime?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  generationTasks GenerationTask[]
+  imageAssets     ImageAsset[]
+  payments        Payment[]
+  subscriptions   Subscription[]
+  promptHistories PromptHistory[]
+  creditTransactions CreditTransaction[]
+  adminAuditLogs  AdminAuditLog[] @relation("AdminAuditActor")
+
+  @@index([email])
+  @@index([role])
+  @@index([status])
+}
+
+model CreditTransaction {
+  id               String                @id @default(uuid())
+  userId           String
+  type             CreditTransactionType
+  amount           Int
+  balanceAfter     Int
+  description      String?
+  relatedTaskId    String?
+  relatedPaymentId String?
+  metadata         Json?
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([type])
+  @@index([relatedTaskId])
+  @@index([relatedPaymentId])
+  @@index([createdAt])
+}
+
+model AdminAuditLog {
+  id         String   @id @default(uuid())
+  adminId    String
+  action     String
+  targetType String
+  targetId   String?
+  metadata   Json?
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  admin User @relation("AdminAuditActor", fields: [adminId], references: [id], onDelete: Cascade)
+
+  @@index([adminId])
+  @@index([action])
+  @@index([targetType, targetId])
+  @@index([createdAt])
+}
+
+model GenerationTask {
+  id             String           @id @default(uuid())
+  userId         String
+  mode           GenerationMode   @default(TEXT_TO_IMAGE)
+  status         GenerationStatus @default(PENDING)
+  provider       String           @default("openai")
+  model          String
+  prompt         String
+  negativePrompt String?
+  finalPrompt    String?
+  width          Int?
+  height         Int?
+  count          Int              @default(1)
+  seed           String?
+  params         Json?
+  metadata       Json?
+  costCredits    Int              @default(0)
+  errorCode      String?
+  errorMessage   String?
+  startedAt      DateTime?
+  completedAt    DateTime?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  outputAssets    ImageAsset[]    @relation("GenerationOutputs")
+  promptHistories PromptHistory[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([mode])
+  @@index([provider, model])
+  @@index([createdAt])
+}
+
+model ImageAsset {
+  id               String          @id @default(uuid())
+  userId           String
+  generationTaskId String?
+  type             ImageAssetType
+  visibility       AssetVisibility @default(PRIVATE)
+  bucket           String
+  objectKey        String
+  publicUrl        String?
+  thumbnailKey     String?
+  thumbnailUrl     String?
+  mimeType         String
+  fileName         String?
+  sizeBytes        BigInt?
+  width            Int?
+  height           Int?
+  hash             String?
+  nsfwFlag         Boolean         @default(false)
+  moderationStatus String?
+  moderationMetadata Json?
+  metadata         Json?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  generationTask GenerationTask? @relation("GenerationOutputs", fields: [generationTaskId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([generationTaskId])
+  @@index([type])
+  @@index([visibility])
+  @@index([nsfwFlag])
+  @@index([createdAt])
+}
+
+model Payment {
+  id                 String          @id @default(uuid())
+  userId             String
+  provider           PaymentProvider
+  status             PaymentStatus   @default(PENDING)
+  amount             Int
+  currency           String          @default("USD")
+  creditsGranted     Int             @default(0)
+  providerPaymentId  String?
+  providerCustomerId String?
+  providerSessionId  String?
+  productName        String?
+  planCode           String?
+  rawPayload         Json?
+  metadata           Json?
+  paidAt             DateTime?
+  refundedAt         DateTime?
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subscription Subscription?
+
+  @@index([userId])
+  @@index([provider])
+  @@index([status])
+  @@index([providerPaymentId])
+  @@index([createdAt])
+}
+
+model Subscription {
+  id                     String             @id @default(uuid())
+  userId                 String
+  paymentId              String?            @unique
+  status                 SubscriptionStatus @default(ACTIVE)
+  planCode               String
+  planName               String
+  interval               BillingInterval
+  priceAmount            Int
+  currency               String             @default("USD")
+  creditsPerCycle        Int                @default(0)
+  provider               PaymentProvider
+  providerSubscriptionId String?
+  providerCustomerId     String?
+  currentPeriodStart     DateTime?
+  currentPeriodEnd       DateTime?
+  trialStart             DateTime?
+  trialEnd               DateTime?
+  cancelAtPeriodEnd      Boolean            @default(false)
+  cancelledAt            DateTime?
+  metadata               Json?
+  createdAt              DateTime           @default(now())
+  updatedAt              DateTime           @updatedAt
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  payment Payment? @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([status])
+  @@index([planCode])
+  @@index([providerSubscriptionId])
+  @@index([currentPeriodEnd])
+}
+
+model PromptHistory {
+  id               String   @id @default(uuid())
+  userId           String
+  generationTaskId String?
+  rawPrompt        String
+  enhancedPrompt   String?
+  finalPrompt      String?
+  negativePrompt   String?
+  language         String?
+  style            String?
+  provider         String?
+  model            String?
+  params           Json?
+  metadata         Json?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  generationTask GenerationTask? @relation(fields: [generationTaskId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([generationTaskId])
+  @@index([provider, model])
+  @@index([createdAt])
+}
