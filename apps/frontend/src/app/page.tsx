@@ -1,34 +1,37 @@
+"use client";
+
 import Link from "next/link";
 import { ArrowRight, Images, ShieldCheck, WalletCards } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-
-const features = [
-  { icon: Images, title: "Prompt to production assets", text: "Generate polished campaign, product, and concept visuals from a focused workspace." },
-  { icon: WalletCards, title: "Credits built in", text: "Meter every generation with auditable credit consumption and Stripe checkout." },
-  { icon: ShieldCheck, title: "Operational control", text: "Queue-backed generation, admin review, user management, and reliable retries." }
-];
+import { useLanguage } from "@/lib/i18n";
 
 export default function HomePage() {
+  const { t } = useLanguage();
+  const features = [
+    { icon: Images, title: t("featureOneTitle"), text: t("featureOneText") },
+    { icon: WalletCards, title: t("featureTwoTitle"), text: t("featureTwoText") },
+    { icon: ShieldCheck, title: t("featureThreeTitle"), text: t("featureThreeText") }
+  ];
+
   return (
     <AppShell>
       <section className="mx-auto grid max-w-7xl gap-10 px-4 py-14 sm:px-6 lg:grid-cols-[1.05fr_0.95fr] lg:py-20">
         <div className="flex flex-col justify-center">
-          <p className="mb-4 text-sm text-white/[0.58]">Enterprise AI image generation</p>
+          <p className="mb-4 text-sm text-white/[0.58]">{t("heroEyebrow")}</p>
           <h1 className="max-w-3xl text-5xl font-semibold tracking-normal text-white sm:text-6xl lg:text-7xl">
-            Astra Image
+            {t("heroTitle")}
           </h1>
           <p className="mt-6 max-w-2xl text-lg leading-8 text-white/[0.66]">
-            A scalable image generation platform with async AI jobs, credits, payments, history,
-            and admin operations designed as one cohesive SaaS system.
+            {t("heroDescription")}
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <Button asChild>
-              <Link href="/generate">Start generating <ArrowRight size={16} /></Link>
+              <Link href="/generate">{t("startGenerating")} <ArrowRight size={16} /></Link>
             </Button>
             <Button asChild variant="secondary">
-              <Link href="/history">View history</Link>
+              <Link href="/history">{t("viewHistory")}</Link>
             </Button>
           </div>
         </div>

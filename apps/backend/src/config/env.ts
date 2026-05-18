@@ -1,5 +1,13 @@
-import "dotenv/config";
+import { existsSync } from "node:fs";
+import { resolve } from "node:path";
+import { config } from "dotenv";
 import { z } from "zod";
+
+for (const envPath of [resolve(process.cwd(), ".env"), resolve(process.cwd(), "../../.env")]) {
+  if (existsSync(envPath)) {
+    config({ path: envPath, override: false });
+  }
+}
 
 const envSchema = z.object({
   BACKEND_PORT: z.coerce.number().int().positive().default(4000),
